@@ -3,34 +3,6 @@ import threading, Queue, cgi, urllib, re, os, random, string
 import enso.messages
 from enso.contrib.scriptotron import cmdretriever
 
-CONFIRM_TEMPLATE = """<!doctype html>
-<html>
-<head>
-<title>Install an Enso command</title>
-</head>
-<body>
-<h1>Install an Enso command</h1>
-<p>You're trying to install a command from %(url)s. Are you sure you 
-want to?</p>
-<form method="POST">
-<input type="hidden" name="url" value="%(url)s">
-<input type="hidden" name="nonce" value="%(nonce)s">
-<input type="hidden" name="ref" value="%(ref)s">
-<input type="submit" value="Install">
-</form>
-</body>
-</html>
-"""
-REDIRECT_TEMPLATE = """<!doctype html>
-<html>
-<head>
-<title>Command installed</title>
-<META http-equiv="refresh" content="0;URL=%s"> 
-</head>
-<body>
-<h1>Command successfully installed!</h1>
-"""
-
 class myhandler(BaseHTTPRequestHandler):
   def __init__(self, request, client_address, server, queue, nonce_dict):
     self.queue = queue
@@ -39,13 +11,17 @@ class myhandler(BaseHTTPRequestHandler):
 
   def get_random_nonce(self):
     return ''.join([random.choice(string.lowercase) for x in range(10)])
+  
+  def get_webui_file(self, fn):
+    path = os.path.join(os.path.split(__file__)[0], "webui", fn)
+    fp = open(path)
+    data = fp.read()
+    fp.close()
+    return data
 
   def do_GET(self):
     if self.path == "/install.js":
-      jspath = os.path.join(os.path.split(__file__)[0], "enso-install.js")
-      fp = open(jspath)
-      js = fp.read()
-      fp.close()
+      js = self.get_webui_file("install.js")
       self.send_response(200)
       self.send_header("Content-Type", "text/javascript")
       self.end_headers()
@@ -70,10 +46,14 @@ class myhandler(BaseHTTPRequestHandler):
       if nonce:
         # check it's the right nonce
         if nonce == self.nonce_dict.get(url, None):
-          self.queue.put(url)
+          install = form.getfirst("install", None)
+          cancel = form.getfirst("cancel", None)
+          if install or not cancel:
+            self.queue.put(url)
           self.send_response(200)
           self.end_headers()
-          self.wfile.write(REDIRECT_TEMPLATE % ref)
+          REDIRECT_TEMPLATE = self.get_webui_file("redirect.html")
+          self.wfile.write(REDIRECT_TEMPLATE % {"ref":ref})
         else:
           # wrong nonce: fail
           self.send_response(401)
@@ -86,6 +66,7 @@ class myhandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+        CONFIRM_TEMPLATE = self.get_webui_file("confirm.html")
         self.wfile.write(CONFIRM_TEMPLATE % {
           "url":cgi.escape(url), 
           "nonce": nonce,
