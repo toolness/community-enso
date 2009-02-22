@@ -11,7 +11,9 @@ var enso = {
       inp.type = "hidden"; inp.name = "url"; inp.value = main.href;
       var sub = document.createElement("input");
       sub.type = "submit"; sub.value = "Install";
-      form.appendChild(inp); form.appendChild(sub);
+      var ref = document.createElement("input");
+      ref.type = "hidden"; ref.name = "ref"; ref.value = location.href;
+      form.appendChild(inp); form.appendChild(sub); form.appendChild(ref); 
       if (main.nextSibling) {
         main.parentNode.insertBefore(form, main.nextSibling);
       } else {

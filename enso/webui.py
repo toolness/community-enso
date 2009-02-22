@@ -15,8 +15,20 @@ want to?</p>
 <form method="POST">
 <input type="hidden" name="url" value="%(url)s">
 <input type="hidden" name="nonce" value="%(nonce)s">
+<input type="hidden" name="ref" value="%(ref)s">
 <input type="submit" value="Install">
 </form>
+</body>
+</html>
+"""
+REDIRECT_TEMPLATE = """<!doctype html>
+<html>
+<head>
+<title>Command installed</title>
+<META http-equiv="refresh" content="0;URL=%s"> 
+</head>
+<body>
+<h1>Command successfully installed!</h1>
 """
 
 class myhandler(BaseHTTPRequestHandler):
@@ -52,7 +64,8 @@ class myhandler(BaseHTTPRequestHandler):
                      'CONTENT_TYPE':self.headers['Content-Type'],
                      })
     url = form.getfirst("url", None)
-    if url:
+    ref = form.getfirst("ref", None)
+    if url and ref:
       nonce = form.getfirst("nonce", None)
       if nonce:
         # check it's the right nonce
@@ -60,7 +73,7 @@ class myhandler(BaseHTTPRequestHandler):
           self.queue.put(url)
           self.send_response(200)
           self.end_headers()
-          self.wfile.write("""OK""")
+          self.wfile.write(REDIRECT_TEMPLATE % ref)
         else:
           # wrong nonce: fail
           self.send_response(401)
@@ -73,7 +86,11 @@ class myhandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(CONFIRM_TEMPLATE % {"url":url, "nonce": nonce})
+        self.wfile.write(CONFIRM_TEMPLATE % {
+          "url":cgi.escape(url), 
+          "nonce": nonce,
+          "ref": cgi.escape(ref)
+          })
     else:
       self.send_response(401)
       self.end_headers()
