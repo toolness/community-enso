@@ -1,12 +1,32 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-import threading, Queue, cgi, urllib, re, os
+import threading, Queue, cgi, urllib, re, os, random, string
 import enso.messages
 from enso.contrib.scriptotron import cmdretriever
 
+CONFIRM_TEMPLATE = """<!doctype html>
+<html>
+<head>
+<title>Install an Enso command</title>
+</head>
+<body>
+<h1>Install an Enso command</h1>
+<p>You're trying to install a command from %(url)s. Are you sure you 
+want to?</p>
+<form method="POST">
+<input type="hidden" name="url" value="%(url)s">
+<input type="hidden" name="nonce" value="%(nonce)s">
+<input type="submit" value="Install">
+</form>
+"""
+
 class myhandler(BaseHTTPRequestHandler):
-  def __init__(self, request, client_address, server, queue):
+  def __init__(self, request, client_address, server, queue, nonce_dict):
     self.queue = queue
+    self.nonce_dict = nonce_dict
     BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+
+  def get_random_nonce(self):
+    return ''.join([random.choice(string.lowercase) for x in range(10)])
 
   def do_GET(self):
     if self.path == "/install.js":
@@ -33,10 +53,27 @@ class myhandler(BaseHTTPRequestHandler):
                      })
     url = form.getfirst("url", None)
     if url:
-      self.queue.put(url)
-      self.send_response(200)
-      self.end_headers()
-      self.wfile.write("""OK""")
+      nonce = form.getfirst("nonce", None)
+      if nonce:
+        # check it's the right nonce
+        if nonce == self.nonce_dict.get(url, None):
+          self.queue.put(url)
+          self.send_response(200)
+          self.end_headers()
+          self.wfile.write("""OK""")
+        else:
+          # wrong nonce: fail
+          self.send_response(401)
+          self.end_headers()
+          self.wfile.write("""Bad Request""")
+      else:
+        # no nonce; display confirmation page
+        nonce = self.get_random_nonce()
+        self.nonce_dict[url] = nonce
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(CONFIRM_TEMPLATE % {"url":url, "nonce": nonce})
     else:
       self.send_response(401)
       self.end_headers()
@@ -47,9 +84,11 @@ class myhttpd(HTTPServer):
   def __init__(self, server_address, RequestHandlerClass, queue):
     HTTPServer.__init__(self, server_address, RequestHandlerClass)
     self.queue = queue
+    self.nonce_dict = {}
   def finish_request(self, request, client_address):
     # overridden from SocketServer.TCPServer
-    self.RequestHandlerClass(request, client_address, self, self.queue)      
+    self.RequestHandlerClass(request, client_address, self, self.queue,
+      self.nonce_dict)
 
 class Httpd(threading.Thread):
   def __init__(self, queue):

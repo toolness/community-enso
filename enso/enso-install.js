@@ -12,17 +12,10 @@ var enso = {
       var sub = document.createElement("input");
       sub.type = "submit"; sub.value = "Install";
       form.appendChild(inp); form.appendChild(sub);
-      var ifr = document.createElement("iframe");
-      var ran = (new Date).getTime() + "_" + parseInt(Math.random()*10000);
-      form.target = ran;
-      ifr.name = ran;
-      ifr.style.display = "none";
       if (main.nextSibling) {
-        main.parentNode.insertBefore(ifr, main.nextSibling);
         main.parentNode.insertBefore(form, main.nextSibling);
       } else {
         main.parentNode.appendChild(form);
-        main.parentNode.appendChild(ifr);
       }
     }
   }
