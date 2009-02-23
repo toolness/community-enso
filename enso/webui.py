@@ -143,7 +143,8 @@ def install_command_from_url(command_url):
     install_message = "%s is now a command" % installed_commands[0]
   else:
     install_message = "%s are now commands" % ", ".join(installed_commands)
-  fp = open(command_file_path, "w")
+  # Use binary mode for writing so endlines are not converted to "\r\n" on win32
+  fp = open(command_file_path, "wb")
   fp.write(text)
   fp.close()
   displayMessage(install_message)
