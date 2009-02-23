@@ -41,6 +41,14 @@ oldPath = os.environ["PATH"]
 path = oldPath + ";" +  os.path.abspath( __path__[0] )
 os.environ["PATH"] = path
 
+def get_script_folder_name():
+  """Returns the folder where Enso commands are found. This function
+     is responsible for ensuring that this folder exists: it must not
+     return a path that is not present! It is expected to place this
+     folder in some platform-specific logical location."""
+  raise NotImplementedError("This platform does not define a "
+      "scripts folder (this needs fixing)")
+
 # Import and return the Win32 implementation of the requested interface.
 
 def provideInterface( name ):
@@ -63,5 +71,9 @@ def provideInterface( name ):
     elif name == "selection":
         import enso.platform.win32.selection
         return enso.platform.win32.selection
+    elif name == "scripts_folder":
+        from enso.platform.win32.scriptfolder import get_script_folder_name
+        return get_script_folder_name
     else:
         return None
+

@@ -1,19 +1,27 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-import threading, Queue, cgi, urllib, re, os
+import threading, Queue, cgi, urllib, re, os, random, string
 import enso.messages
 from enso.contrib.scriptotron import cmdretriever
 
 class myhandler(BaseHTTPRequestHandler):
-  def __init__(self, request, client_address, server, queue):
+  def __init__(self, request, client_address, server, queue, nonce_dict):
     self.queue = queue
+    self.nonce_dict = nonce_dict
     BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+
+  def get_random_nonce(self):
+    return ''.join([random.choice(string.lowercase) for x in range(10)])
+  
+  def get_webui_file(self, fn):
+    path = os.path.join(os.path.split(__file__)[0], "webui", fn)
+    fp = open(path)
+    data = fp.read()
+    fp.close()
+    return data
 
   def do_GET(self):
     if self.path == "/install.js":
-      jspath = os.path.join(os.path.split(__file__)[0], "enso-install.js")
-      fp = open(jspath)
-      js = fp.read()
-      fp.close()
+      js = self.get_webui_file("install.js")
       self.send_response(200)
       self.send_header("Content-Type", "text/javascript")
       self.end_headers()
@@ -32,11 +40,38 @@ class myhandler(BaseHTTPRequestHandler):
                      'CONTENT_TYPE':self.headers['Content-Type'],
                      })
     url = form.getfirst("url", None)
-    if url:
-      self.queue.put(url)
-      self.send_response(200)
-      self.end_headers()
-      self.wfile.write("""OK""")
+    ref = form.getfirst("ref", None)
+    if url and ref:
+      nonce = form.getfirst("nonce", None)
+      if nonce:
+        # check it's the right nonce
+        if nonce == self.nonce_dict.get(url, None):
+          install = form.getfirst("install", None)
+          cancel = form.getfirst("cancel", None)
+          if install or not cancel:
+            self.queue.put(url)
+          self.send_response(200)
+          self.end_headers()
+          REDIRECT_TEMPLATE = self.get_webui_file("redirect.html")
+          self.wfile.write(REDIRECT_TEMPLATE % {"ref":ref})
+        else:
+          # wrong nonce: fail
+          self.send_response(401)
+          self.end_headers()
+          self.wfile.write("""Bad Request""")
+      else:
+        # no nonce; display confirmation page
+        nonce = self.get_random_nonce()
+        self.nonce_dict[url] = nonce
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        CONFIRM_TEMPLATE = self.get_webui_file("confirm.html")
+        self.wfile.write(CONFIRM_TEMPLATE % {
+          "url":cgi.escape(url), 
+          "nonce": nonce,
+          "ref": cgi.escape(ref)
+          })
     else:
       self.send_response(401)
       self.end_headers()
@@ -47,9 +82,11 @@ class myhttpd(HTTPServer):
   def __init__(self, server_address, RequestHandlerClass, queue):
     HTTPServer.__init__(self, server_address, RequestHandlerClass)
     self.queue = queue
+    self.nonce_dict = {}
   def finish_request(self, request, client_address):
     # overridden from SocketServer.TCPServer
-    self.RequestHandlerClass(request, client_address, self, self.queue)      
+    self.RequestHandlerClass(request, client_address, self, self.queue,
+      self.nonce_dict)
 
 class Httpd(threading.Thread):
   def __init__(self, queue):
@@ -85,8 +122,9 @@ def install_command_from_url(command_url):
     msg = "Couldn't install this command %s" % command_file_name
     displayMessage(msg)
     return
-  from enso.contrib.scriptotron.tracker import SCRIPTS_FOLDER_NAME as cmd_folder
-  command_file_path = os.path.expanduser(os.path.join(cmd_folder, command_file_name))
+  from enso.providers import getInterface
+  cmd_folder = getInterface("scripts_folder")()
+  command_file_path = os.path.join(cmd_folder, command_file_name)
   shortname = os.path.splitext(command_file_name)[0]
   if os.path.exists(command_file_path):
     msg = "You already have a command named %s" % shortname

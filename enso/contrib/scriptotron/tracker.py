@@ -11,9 +11,8 @@ from enso.contrib.scriptotron import cmdretriever
 from enso.contrib.scriptotron import ensoapi
 from enso.contrib.scriptotron import concurrency
 
-# These should be defined in a platform-specific back end 
+# This may no longer be required (it was for backward compat)
 SCRIPTS_FILE_NAME = "~/.ensocommands"
-SCRIPTS_FOLDER_NAME = "~/.local/share/enso/commands"
 
 class ScriptCommandTracker:
     def __init__( self, commandManager, eventManager ):
@@ -66,7 +65,8 @@ class ScriptTracker:
         self._scriptCmdTracker = ScriptCommandTracker( commandManager,
                                                        eventManager )
         self._scriptFilename = os.path.expanduser(SCRIPTS_FILE_NAME )
-        self._scriptFolder = os.path.expanduser(SCRIPTS_FOLDER_NAME )
+        from enso.providers import getInterface
+        self._scriptFolder = getInterface("scripts_folder")()
         self._lastMods = {}
         self._registerDependencies()
 
