@@ -30,7 +30,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import sys, xdg.BaseDirectory
+import sys
 
 import enso.platform
 
@@ -42,13 +42,6 @@ platforms = [
 ]
 if not True in map (lambda s: sys.platform.startswith (s), platforms):
     raise enso.platform.PlatformUnsupportedError()
-
-def get_script_folder_name():
-  """Returns the folder where Enso commands are found. This function
-     is responsible for ensuring that this folder exists: it must not
-     return a path that is not present! It is expected to place this
-     folder in some platform-specific logical location."""
-  return xdg.BaseDirectory.save_data_path('enso','commands')
 
 def provideInterface (name):
     '''Plug into Enso core'''
@@ -65,6 +58,7 @@ def provideInterface (name):
         import enso.platform.linux.selection
         return enso.platform.linux.selection
     elif name == "scripts_folder":
+        from enso.platform.linux.scriptfolder import get_script_folder_name
         return get_script_folder_name
     else:
         return None

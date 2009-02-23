@@ -72,6 +72,7 @@ def provideInterface( name ):
         import enso.platform.win32.selection
         return enso.platform.win32.selection
     elif name == "scripts_folder":
+        from enso.platform.win32.scriptfolder import get_script_folder_name
         return get_script_folder_name
     else:
         return None

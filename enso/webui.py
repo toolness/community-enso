@@ -122,8 +122,8 @@ def install_command_from_url(command_url):
     msg = "Couldn't install this command %s" % command_file_name
     displayMessage(msg)
     return
-    from enso.providers import getInterface
-    cmd_folder = getInterface("scripts_folder")()
+  from enso.providers import getInterface
+  cmd_folder = getInterface("scripts_folder")()
   command_file_path = os.path.join(cmd_folder, command_file_name)
   shortname = os.path.splitext(command_file_name)[0]
   if os.path.exists(command_file_path):
