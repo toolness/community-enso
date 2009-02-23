@@ -1,4 +1,5 @@
 from win32com.shell import shell, shellcon
+import os
 
 SYSTEMFOLDER_APPDATALOCAL = shellcon.CSIDL_LOCAL_APPDATA
 
