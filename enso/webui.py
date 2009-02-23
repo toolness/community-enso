@@ -163,6 +163,7 @@ def pollqueue(ms):
 
 def start(eventManager):
   httpd = Httpd(commandq)
+  httpd.setDaemon(True)
   httpd.start()
   eventManager.registerResponder( pollqueue, "timer" )
 
