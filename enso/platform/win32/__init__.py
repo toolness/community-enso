@@ -37,9 +37,9 @@ if not sys.platform.startswith("win"):
     raise enso.platform.PlatformUnsupportedError()
 
 # Hack the PATH so we can load dlls from the enso.platform.win32 directory
-oldPath = os.environ["PATH"]
-path = oldPath + ";" +  os.path.abspath( __path__[0] )
-os.environ["PATH"] = path
+# Our path must be at the beginning, otherwise libcairo-2.dll from other
+# applications can get in the way
+os.environ["PATH"] = "%s;%s" % (os.path.abspath( __path__[0] ), os.environ["PATH"])
 
 def get_script_folder_name():
   """Returns the folder where Enso commands are found. This function
