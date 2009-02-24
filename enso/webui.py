@@ -132,6 +132,8 @@ def install_command_from_url(command_url):
     return
 
   allGlobals = {}
+  # normalise text for crlf
+  text = text.replace('\r\n','\n').replace('\r','\n')
   code = compile( text, command_file_path, "exec" )
   exec code in allGlobals
   installed_commands = [x["cmdName"] for x in 
@@ -141,7 +143,8 @@ def install_command_from_url(command_url):
     install_message = "%s is now a command" % installed_commands[0]
   else:
     install_message = "%s are now commands" % ", ".join(installed_commands)
-  fp = open(command_file_path, "w")
+  # Use binary mode for writing so endlines are not converted to "\r\n" on win32
+  fp = open(command_file_path, "wb")
   fp.write(text)
   fp.close()
   displayMessage(install_message)
@@ -160,6 +163,7 @@ def pollqueue(ms):
 
 def start(eventManager):
   httpd = Httpd(commandq)
+  httpd.setDaemon(True)
   httpd.start()
   eventManager.registerResponder( pollqueue, "timer" )
 
