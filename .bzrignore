@@ -1,3 +1,4 @@
+*.bak
 *.pyd
 *_wrap.cxx
 *_wrap.h
@@ -12,3 +13,5 @@ vc90.pdb
 \.sconsign.dblite
 SConstruct.win32.rej
 *.pdb
+*.*~
+
